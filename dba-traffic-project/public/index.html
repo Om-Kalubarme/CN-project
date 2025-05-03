@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DBA & Traffic Prioritization</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      text-align: center;
+    }
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      width: 60%;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+    }
+    .High { color: red; font-weight: bold; }
+    .Medium { color: orange; font-weight: bold; }
+    .Low { color: green; font-weight: bold; }
+    input, select, button {
+      margin: 5px;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>DBA & Traffic Prioritization</h1>
+
+  <table id="deviceTable">
+    <thead>
+      <tr>
+        <th>Device</th>
+        <th>Usage (MB)</th>
+        <th>Priority</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Add New Device</h2>
+  <input type="text" id="device" placeholder="Device Name">
+  <input type="number" id="usage" placeholder="Usage (MB)">
+  <select id="priority">
+    <option value="">Select Priority</option>
+    <option value="High">High</option>
+    <option value="Medium">Medium</option>
+    <option value="Low">Low</option>
+  </select>
+  <button onclick="addDevice()">Add</button>
+
+  <h2>Delete a Device</h2>
+  <select id="deleteDevice"></select>
+  <button onclick="deleteDevice()">Delete</button>
+
+  <script>
+    const tableBody = document.querySelector('#deviceTable tbody');
+    const deleteDropdown = document.getElementById('deleteDevice');
+
+    async function loadDevices() {
+      try {
+        const res = await fetch('/traffic');
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error('Unexpected response:', data);
+          return;
+        }
+
+        tableBody.innerHTML = '';
+        deleteDropdown.innerHTML = '';
+
+        data.forEach(device => {
+          const row = `<tr>
+            <td>${device.device}</td>
+            <td>${device.data_usage}</td>
+            <td class="${device.priority}">${device.priority}</td>
+          </tr>`;
+          tableBody.innerHTML += row;
+
+          const option = document.createElement('option');
+          option.value = device.device;
+          option.text = device.device;
+          deleteDropdown.appendChild(option);
+        });
+      } catch (err) {
+        console.error('Failed to load devices:', err);
+      }
+    }
+
+    async function addDevice() {
+      const device = document.getElementById('device').value;
+      const usage = parseInt(document.getElementById('usage').value);
+      const priority = document.getElementById('priority').value;
+
+      if (!device || !usage || !priority) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      await fetch('/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device, usage, priority })
+      });
+
+      document.getElementById('device').value = '';
+      document.getElementById('usage').value = '';
+      document.getElementById('priority').value = '';
+
+      loadDevices();
+    }
+
+    async function deleteDevice() {
+      const selected = deleteDropdown.value;
+      if (!selected) return;
+
+      await fetch(`/delete/${selected}`, { method: 'DELETE' });
+      loadDevices();
+    }
+
+    loadDevices();
+  </script>
+</body>
+</html>
+
